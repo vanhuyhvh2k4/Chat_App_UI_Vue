@@ -1,30 +1,84 @@
 <template>
-  <nav>
-    <router-link to="/">Home</router-link> |
-    <router-link to="/about">About</router-link>
-  </nav>
-  <router-view />
+	<div id="app">
+		<div class="header">
+			<h1>Chatroom</h1>
+			<p class="username">Username: {{ username }}</p>
+			<p class="online">Online: {{ users.length }}</p>
+		</div>
+		<Chatroom v-bind:messages="messages" v-on:sendMessage="this.sendMessage" />
+	</div>
 </template>
 
+<script>
+import io from 'socket.io-client';
+import Chatroom from './components/ChatRoom.vue';
+
+export default {
+	name: 'app',
+	components: {
+    Chatroom
+},
+	data: function () {
+		return {
+			username: "",
+			socket: io("http://localhost:3000"),
+			messages: [],
+			users: []
+		}
+	},
+	methods: {
+		joinServer: function () {
+			this.socket.on('loggedIn', data => {
+				this.messages = data.messages;
+				this.users = data.users;
+				this.socket.emit('newuser', this.username);
+			});
+
+			this.listen();
+		},
+		listen: function () {
+			this.socket.on('userOnline', user => {
+				this.users.push(user);
+			});
+			this.socket.on('userLeft', user => {
+				this.users.splice(this.users.indexOf(user), 1);
+			});
+			this.socket.on('msg', message => {
+				this.messages.push(message);
+			});
+		},
+		sendMessage: function (message) {
+			this.socket.emit('msg', message);
+		}
+	},
+	mounted: function () {
+		this.username = prompt("What is your username?", "Anonymous");
+
+		if (!this.username) {
+			this.username = "Anonymous";
+		}
+
+		this.joinServer();
+	}
+}
+</script>
+
 <style lang="scss">
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+body {
+	font-family: 'Avenir', Helvetica, Arial, sans-serif;
+	color: #2C3E50;
+	margin: 0;
+	padding: 0;
 }
 
-nav {
-  padding: 30px;
-
-  a {
-    font-weight: bold;
-    color: #2c3e50;
-
-    &.router-link-exact-active {
-      color: #42b983;
-    }
-  }
+#app {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	width: 100%;
+	max-width: 768px;
+	margin: 0 auto;
+	padding: 15px;
+	box-sizing: border-box;
 }
 </style>
